@@ -1,6 +1,6 @@
 {
   "name": "@ayor1337/codex-switch",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Switch between OpenAI Codex CLI auth + provider profiles via a TUI",
   "type": "module",
   "bin": {

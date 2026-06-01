@@ -20,12 +20,19 @@ personality, features, projects, mcp_servers, tui, …) is left untouched.
 ## Install
 
 ```bash
-cd /path/to/CodexSwitch
-npm install
-npm link
+npm install -g @ayor1337/codex-switch
 ```
 
 `codex-switch` is now on your PATH.
+
+### From source
+
+```bash
+git clone https://github.com/Ayor1337/CodexSwtich.git
+cd CodexSwtich
+npm install
+npm link
+```
 
 ## Usage
 

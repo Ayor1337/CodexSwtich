@@ -19,12 +19,19 @@ personality、features、projects、mcp_servers、tui 等）都保持不变。
 ## 安装
 
 ```bash
-cd /path/to/CodexSwitch
-npm install
-npm link
+npm install -g @ayor1337/codex-switch
 ```
 
 之后 `codex-switch` 命令就会出现在你的 PATH 中。
+
+### 从源码安装
+
+```bash
+git clone https://github.com/Ayor1337/CodexSwtich.git
+cd CodexSwtich
+npm install
+npm link
+```
 
 ## 用法
 

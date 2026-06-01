@@ -1,5 +1,7 @@
 # codex-switch
 
+[English](README.md) | **中文**
+
 一个用于在多个 OpenAI Codex CLI 凭据 / Provider 配置之间切换的小工具。
 
 每个 profile 有一个 **kind（类型）**：

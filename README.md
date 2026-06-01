@@ -1,5 +1,7 @@
 # codex-switch
 
+**English** | [中文](README_CN.md)
+
 A small CLI that switches between named profiles of OpenAI Codex CLI
 credentials and provider configuration.
 

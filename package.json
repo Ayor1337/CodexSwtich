@@ -1,11 +1,37 @@
 {
-  "name": "csw",
+  "name": "@ayor1337/codex-switch",
   "version": "0.1.0",
-  "description": "Switch between Codex CLI auth.json + config.toml provider profiles",
+  "description": "Switch between OpenAI Codex CLI auth + provider profiles via a TUI",
   "type": "module",
   "bin": {
-    "codex-switch": "./bin/codex-switch.js"
+    "codex-switch": "bin/codex-switch.js"
   },
+  "files": [
+    "bin/",
+    "src/",
+    "README.md",
+    "README_CN.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "codex",
+    "openai",
+    "cli",
+    "tui",
+    "profile",
+    "switcher",
+    "config"
+  ],
+  "author": "ayor1337",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ayor1337/CodexSwtich.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Ayor1337/CodexSwtich/issues"
+  },
+  "homepage": "https://github.com/Ayor1337/CodexSwtich#readme",
   "engines": {
     "node": ">=18"
   },

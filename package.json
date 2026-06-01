@@ -4,13 +4,13 @@
   "description": "Switch between Codex CLI auth.json + config.toml provider profiles",
   "type": "module",
   "bin": {
-    "csw": "./bin/csw.js"
+    "codex-switch": "./bin/codex-switch.js"
   },
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "start": "node bin/csw.js"
+    "start": "node bin/codex-switch.js"
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",

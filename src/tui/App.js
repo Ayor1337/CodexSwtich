@@ -197,7 +197,7 @@ export function App({ ctrl, onEditor, onQuit }) {
   const layout = html`
     <${Box} flexDirection="column" minHeight=${process.stdout.rows || 24}>
       <${Box} paddingX=${1}>
-        <${Text} bold color="magenta">csw </${Text}>
+        <${Text} bold color="magenta">codex-switch </${Text}>
         <${Text}>— Active: </${Text}>
         <${Text} color="green">${detected ?? '(none)'}</${Text}>
         ${detected && ctrl.state.active && detected !== ctrl.state.active

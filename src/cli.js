@@ -14,19 +14,19 @@ import {
 } from './profiles.js';
 import { switchTo } from './switcher.js';
 
-const HELP = `csw — CodexSwitch — switch Codex CLI auth + provider profiles
+const HELP = `codex-switch — switch Codex CLI auth + provider profiles
 
 Usage:
-  csw                          interactive menu
-  csw list                     list profiles
-  csw current                  show currently active profile (detected)
-  csw use <name>               switch to profile <name>
-  csw show <name>              print profile <name> details (key masked)
-  csw import [name]            import current ~/.codex state as a profile
-  csw rm <name>                delete profile
-  csw rename <old> <new>       rename profile
-  csw --help                   this help
-  csw --version                print version
+  codex-switch                          interactive TUI
+  codex-switch list                     list profiles
+  codex-switch current                  show currently active profile (detected)
+  codex-switch use <name>               switch to profile <name>
+  codex-switch show <name>              print profile <name> details (key masked)
+  codex-switch import [name]            import current ~/.codex state as a profile
+  codex-switch rm <name>                delete profile
+  codex-switch rename <old> <new>       rename profile
+  codex-switch --help                   this help
+  codex-switch --version                print version
 
 Storage: ~/.config/csw/profiles.json (mode 0600)
 Backups: ~/.config/csw/backups/ (one-time, on first switch)
@@ -98,13 +98,13 @@ async function cmdCurrent(state) {
 }
 
 async function cmdUse(state, name) {
-  if (!name) throw new Error('usage: csw use <name>');
+  if (!name) throw new Error('usage: codex-switch use <name>');
   await switchTo(state, name, { onCollision: async () => true });
   console.log(`Switched to ${name}.`);
 }
 
 async function cmdShow(state, name) {
-  if (!name) throw new Error('usage: csw show <name>');
+  if (!name) throw new Error('usage: codex-switch show <name>');
   const p = findProfile(state, name);
   if (!p) throw new Error(`Profile "${name}" not found`);
   const masked = {};
@@ -136,14 +136,14 @@ async function cmdImport(state, name) {
 }
 
 async function cmdRm(state, name) {
-  if (!name) throw new Error('usage: csw rm <name>');
+  if (!name) throw new Error('usage: codex-switch rm <name>');
   deleteProfile(state, name);
   await saveProfiles(state);
   console.log(`Deleted ${name}.`);
 }
 
 async function cmdRename(state, oldName, newName) {
-  if (!oldName || !newName) throw new Error('usage: csw rename <old> <new>');
+  if (!oldName || !newName) throw new Error('usage: codex-switch rename <old> <new>');
   renameProfile(state, oldName, newName);
   await saveProfiles(state);
   console.log(`Renamed ${oldName} → ${newName}.`);
@@ -185,7 +185,7 @@ export async function main(argv) {
     case 'add':
     case 'edit':
       if (!process.stdout.isTTY) {
-        throw new Error(`'${cmd}' is only available in interactive mode (run bare 'csw')`);
+        throw new Error(`'${cmd}' is only available in interactive mode (run bare 'codex-switch')`);
       }
       {
         const { renderTui } = await import('./tui/index.js');

@@ -17,6 +17,33 @@ export function profileKind(p) {
   return p?.providerName ? 'custom' : 'official';
 }
 
+// Validate that an auth.json is usable as the credential half of an "official"
+// profile. Accepts either an API-key shape or a complete OAuth tokens bundle.
+// Returns the matched form ('api-key' | 'oauth'); throws with a clear message
+// otherwise.
+export function validateOfficialAuth(auth) {
+  if (!auth || typeof auth !== 'object' || Array.isArray(auth)) {
+    throw new Error('auth.json must be a JSON object');
+  }
+  const hasApiKey =
+    typeof auth.OPENAI_API_KEY === 'string' && auth.OPENAI_API_KEY.length > 0;
+  const t = auth.tokens;
+  const hasOAuth =
+    t && typeof t === 'object' && !Array.isArray(t) &&
+    typeof t.id_token === 'string' && t.id_token.length > 0 &&
+    typeof t.access_token === 'string' && t.access_token.length > 0 &&
+    typeof t.refresh_token === 'string' && t.refresh_token.length > 0;
+  if (!hasApiKey && !hasOAuth) {
+    throw new Error(
+      "auth.json doesn't look like a valid Codex credential. " +
+      "Expected either a non-empty OPENAI_API_KEY string, " +
+      "or a tokens object with id_token, access_token, and refresh_token. " +
+      "Run `codex login` first, then try again."
+    );
+  }
+  return hasOAuth ? 'oauth' : 'api-key';
+}
+
 export function findProfile(state, name) {
   return state.profiles.find((p) => p.name === name) || null;
 }
@@ -69,6 +96,7 @@ export async function buildProfileFromCurrent(name) {
   const { providerName, providerBlock } = extractCurrent(parsed);
   // No model_provider override → official profile.
   if (!providerName) {
+    validateOfficialAuth(authJson);
     return { name, kind: 'official', authJson };
   }
   // model_provider set but no block → cannot import as custom.

@@ -17,6 +17,7 @@ import {
   buildProfileFromCurrent,
   detectActiveProfile,
   profileKind,
+  validateOfficialAuth,
   NAME_RE,
 } from '../profiles.js';
 import { saveProfiles } from '../store.js';
@@ -253,10 +254,12 @@ export function App({ ctrl, onEditor, onQuit }) {
           let auth;
           try { auth = await readAuth(); }
           catch (e) { showMessage('error', `Could not read ~/.codex/auth.json: ${e.message}`); return; }
-          if (!auth || typeof auth !== 'object' || Array.isArray(auth)) {
-            showMessage('error', '~/.codex/auth.json is missing or not a JSON object. Run `codex login` first, then try again.');
+          if (!auth) {
+            showMessage('error', '~/.codex/auth.json is missing. Run `codex login` first.');
             return;
           }
+          try { validateOfficialAuth(auth); }
+          catch (e) { showMessage('error', e.message); return; }
           ctrl.pending.authJson = auth;
           ctrl.mode = 'add:confirm-switch';
           force();

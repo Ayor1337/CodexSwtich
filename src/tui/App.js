@@ -244,7 +244,13 @@ export function App({ ctrl, onEditor, onQuit }) {
           selectedIndex=${ctrl.selectedIndex}
           focused=${ctrl.focus === 'profiles'}
         />
-        <${Details} profile=${sel} />
+        ${ctrl.mode === 'message'
+          ? html`<${Message}
+              kind=${ctrl.message.kind}
+              text=${ctrl.message.text}
+              onDismiss=${() => { ctrl.mode = 'browse'; ctrl.message = null; force(); }}
+            />`
+          : html`<${Details} profile=${sel} />`}
         <${ActionPanel}
           actions=${actionItems}
           selectedIndex=${ctrl.actionIndex}
@@ -252,17 +258,15 @@ export function App({ ctrl, onEditor, onQuit }) {
           title=${ctrl.mode === 'edit-menu' ? 'Edit Profile' : 'Actions'}
         />
       </${Box}>
-      <${HelpBar} mode=${ctrl.mode === 'edit-menu' ? 'edit-menu' : 'browse'} />
+      ${ctrl.mode === 'message'
+        ? html`<${Box} paddingX=${1}><${Text} dimColor>Enter: dismiss</${Text}></${Box}>`
+        : html`<${HelpBar} mode=${ctrl.mode === 'edit-menu' ? 'edit-menu' : 'browse'} />`}
     </${Box}>
   `;
 
   // ---- modal overlays ----
   if (ctrl.mode === 'message') {
-    return html`<${Message}
-      kind=${ctrl.message.kind}
-      text=${ctrl.message.text}
-      onDismiss=${() => { ctrl.mode = 'browse'; ctrl.message = null; force(); }}
-    />`;
+    return layout;
   }
 
   if (ctrl.mode === 'add:kind') {

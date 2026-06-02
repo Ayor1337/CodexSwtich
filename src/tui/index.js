@@ -8,6 +8,8 @@ class Controller {
   constructor(state) {
     this.state = state;
     this.selectedIndex = 0;
+    this.focus = 'profiles';
+    this.actionIndex = 0;
     this.mode = 'browse';
     this.pending = {};
     this.message = null;

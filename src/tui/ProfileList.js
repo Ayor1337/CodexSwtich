@@ -2,12 +2,18 @@ import { Box, Text } from 'ink';
 import { html } from './html.js';
 import { profileKind } from '../profiles.js';
 
-export function ProfileList({ profiles, activeName, selectedIndex }) {
+export function ProfileList({ profiles, activeName, selectedIndex, focused = false }) {
   return html`
-    <${Box} flexDirection="column" borderStyle="round" borderColor="gray" paddingX=${1} width=${32}>
-      <${Text} bold>Profiles</${Text}>
+    <${Box}
+      flexDirection="column"
+      borderStyle="round"
+      borderColor=${focused ? 'cyan' : 'gray'}
+      paddingX=${1}
+      width=${28}
+    >
+      <${Text} bold color=${focused ? 'cyan' : undefined}>Profiles</${Text}>
       ${profiles.length === 0
-        ? html`<${Text} dimColor>(none — press 'a' or 'i')</${Text}>`
+        ? html`<${Text} dimColor>(none — choose Add or Import)</${Text}>`
         : profiles.map((p, i) => {
             const isActive = p.name === activeName;
             const isSel = i === selectedIndex;

@@ -36,8 +36,8 @@ npm link
 
 ## Usage
 
-Bare invocation opens a full-screen TUI (Ink-based, two-pane layout
-with profile list + details and a keybinding help bar):
+Bare invocation opens a full-screen TUI (Ink-based, three-pane layout
+with profile list + details + an action panel):
 
 ```bash
 codex-switch
@@ -45,14 +45,15 @@ codex-switch
 
 Keys inside the TUI:
 
-- `↑↓` / `j` `k` — move selection
-- `Enter` — switch to highlighted profile
-- `a` — add new profile (asks: official or custom)
-- `e` — edit highlighted profile
-- `r` — rename
-- `d` — delete
-- `i` — import current `~/.codex` state
-- `q` / `Esc` — quit
+- `Tab` — switch focus between profiles and actions
+- `↑↓` / `j` `k` — move within the focused pane
+- `Enter` — run the highlighted profile/action
+- `Esc` — go back from an edit submenu, or quit from the top level
+- `q` — quit from the top level
+
+Main operations such as add, edit, rename, delete, import, and quit are
+selected from the action panel. Editing a custom profile still opens
+`$EDITOR` for the TOML provider block and JSON auth file.
 
 For scripting there are subcommands:
 

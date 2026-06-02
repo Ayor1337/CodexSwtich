@@ -35,8 +35,8 @@ npm link
 
 ## 用法
 
-直接运行会打开一个全屏 TUI（基于 Ink，左右两栏：profile 列表 + 详情，
-底部一行快捷键提示）：
+直接运行会打开一个全屏 TUI（基于 Ink，三栏布局：profile 列表 + 详情 +
+动作面板）：
 
 ```bash
 codex-switch
@@ -44,14 +44,15 @@ codex-switch
 
 TUI 中的快捷键：
 
-- `↑↓` / `j` `k` —— 移动光标
-- `Enter` —— 切换到当前高亮的 profile
-- `a` —— 新建 profile（先选 official 或 custom）
-- `e` —— 编辑当前 profile
-- `r` —— 重命名
-- `d` —— 删除
-- `i` —— 把当前 `~/.codex` 的状态导入为一个新 profile
-- `q` / `Esc` —— 退出
+- `Tab` —— 在 profile 列表和动作面板之间切换焦点
+- `↑↓` / `j` `k` —— 在当前焦点栏内移动光标
+- `Enter` —— 执行当前高亮的 profile 或动作
+- `Esc` —— 从编辑子菜单返回；顶层时退出
+- `q` —— 顶层时退出
+
+新建、编辑、重命名、删除、导入和退出等主要操作都从动作面板中选择。
+编辑 custom profile 时，TOML providerBlock 和 JSON authJson 仍会交给
+`$EDITOR` 打开。
 
 如果想用在脚本里，可以用子命令：
 

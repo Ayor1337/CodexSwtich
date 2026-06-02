@@ -62,7 +62,7 @@ async function bootstrapState() {
   } else {
     bootMessage = {
       kind: 'warn',
-      text: `No profiles yet. ${importError ? `Could not auto-detect ~/.codex state: ${importError}. ` : ''}Press 'a' to add or 'i' to import.`,
+      text: `No profiles yet. ${importError ? `Could not auto-detect ~/.codex state: ${importError}. ` : ''}Choose Add Profile or Import Current from the action panel.`,
     };
   }
   await saveProfiles(state);

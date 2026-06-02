@@ -22,7 +22,7 @@ import {
 } from '../profiles.js';
 import { saveProfiles } from '../store.js';
 import { switchTo } from '../switcher.js';
-import { readAuth } from '../codex.js';
+import { readAuth, readConfig } from '../codex.js';
 import { buildActionItems } from './actions.js';
 
 const TOML_TEMPLATE = `name = ""
@@ -291,14 +291,18 @@ export function App({ ctrl, onEditor, onQuit }) {
         ctrl.pending.name = v;
         if (isOfficial) {
           // Capture the current ~/.codex/auth.json directly — no manual edit.
-          let auth;
-          try { auth = await readAuth(); }
-          catch (e) { showMessage('error', `Could not read ~/.codex/auth.json: ${e.message}`); return; }
+          let auth, parsed;
+          try {
+            auth = await readAuth();
+            ({ parsed } = await readConfig());
+          } catch (e) {
+            showMessage('error', `Could not read ~/.codex state: ${e.message}`); return;
+          }
           if (!auth) {
             showMessage('error', '~/.codex/auth.json is missing. Run `codex login` first.');
             return;
           }
-          try { validateOfficialAuth(auth); }
+          try { validateOfficialAuth(auth, parsed); }
           catch (e) { showMessage('error', e.message); return; }
           ctrl.pending.authJson = auth;
           ctrl.mode = 'add:confirm-switch';

@@ -1,6 +1,10 @@
 import { readAuth, readConfig, extractCurrent } from './codex.js';
 import { deepEqual } from './util/deepEqual.js';
 
+export class OfficialAuthError extends Error {
+  constructor(message) { super(message); this.name = 'OfficialAuthError'; }
+}
+
 export const NAME_RE = /^[A-Za-z0-9_.-]+$/;
 
 export function validateName(name) {
@@ -17,13 +21,17 @@ export function profileKind(p) {
   return p?.providerName ? 'custom' : 'official';
 }
 
-// Validate that an auth.json is usable as the credential half of an "official"
-// profile. Accepts either an API-key shape or a complete OAuth tokens bundle.
-// Returns the matched form ('api-key' | 'oauth'); throws with a clear message
+// Validate that the current Codex state is usable as an "official" profile.
+// Checks two things:
+//   1. auth.json has either an API-key shape OR a complete OAuth tokens bundle.
+//   2. config.toml does NOT have `model_provider` set — if it does, the current
+//      state is a custom-provider setup, not an official one, regardless of
+//      what auth.json looks like.
+// Returns the matched form ('api-key' | 'oauth'); throws OfficialAuthError
 // otherwise.
-export function validateOfficialAuth(auth) {
+export function validateOfficialAuth(auth, configParsed) {
   if (!auth || typeof auth !== 'object' || Array.isArray(auth)) {
-    throw new Error('auth.json must be a JSON object');
+    throw new OfficialAuthError('auth.json must be a JSON object');
   }
   const hasApiKey =
     typeof auth.OPENAI_API_KEY === 'string' && auth.OPENAI_API_KEY.length > 0;
@@ -34,12 +42,23 @@ export function validateOfficialAuth(auth) {
     typeof t.access_token === 'string' && t.access_token.length > 0 &&
     typeof t.refresh_token === 'string' && t.refresh_token.length > 0;
   if (!hasApiKey && !hasOAuth) {
-    throw new Error(
+    throw new OfficialAuthError(
       "auth.json doesn't look like a valid Codex credential. " +
       "Expected either a non-empty OPENAI_API_KEY string, " +
       "or a tokens object with id_token, access_token, and refresh_token. " +
       "Run `codex login` first, then try again."
     );
+  }
+  if (configParsed && typeof configParsed === 'object') {
+    const mp = configParsed.model_provider;
+    if (typeof mp === 'string' && mp.length > 0) {
+      throw new OfficialAuthError(
+        `~/.codex/config.toml currently sets model_provider="${mp}", ` +
+        `so the live state is a custom-provider setup, not an official one. ` +
+        `Either run \`codex login\` (and unset model_provider) before capturing, ` +
+        `or add this as a "custom" profile instead.`
+      );
+    }
   }
   return hasOAuth ? 'oauth' : 'api-key';
 }
@@ -96,7 +115,7 @@ export async function buildProfileFromCurrent(name) {
   const { providerName, providerBlock } = extractCurrent(parsed);
   // No model_provider override → official profile.
   if (!providerName) {
-    validateOfficialAuth(authJson);
+    validateOfficialAuth(authJson, parsed);
     return { name, kind: 'official', authJson };
   }
   // model_provider set but no block → cannot import as custom.

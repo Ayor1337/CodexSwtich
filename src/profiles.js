@@ -59,6 +59,14 @@ export function validateOfficialAuth(auth, configParsed) {
         `or add this as a "custom" profile instead.`
       );
     }
+    const model = configParsed.model;
+    if (typeof model === 'string' && model.trim()) {
+      throw new OfficialAuthError(
+        `~/.codex/config.toml currently sets model="${model}", ` +
+        `so the live state carries a model override. Add this as a "custom" profile ` +
+        `or remove model before capturing an official profile.`
+      );
+    }
   }
   return hasOAuth ? 'oauth' : 'api-key';
 }
@@ -105,6 +113,10 @@ export function deleteProfile(state, name) {
   return state;
 }
 
+function normalizeModel(model) {
+  return typeof model === 'string' && model.trim() ? model.trim() : null;
+}
+
 export async function buildProfileFromCurrent(name) {
   validateName(name);
   const authJson = await readAuth();
@@ -112,7 +124,7 @@ export async function buildProfileFromCurrent(name) {
   if (!authJson) {
     throw new Error('Current ~/.codex/auth.json is missing');
   }
-  const { providerName, providerBlock } = extractCurrent(parsed);
+  const { providerName, providerBlock, model } = extractCurrent(parsed);
   // No model_provider override → official profile.
   if (!providerName) {
     validateOfficialAuth(authJson, parsed);
@@ -128,6 +140,7 @@ export async function buildProfileFromCurrent(name) {
     authJson,
     providerName,
     providerBlock: { ...providerBlock },
+    model,
   };
 }
 
@@ -140,16 +153,17 @@ export async function detectActiveProfile(state) {
     return null;
   }
   if (!authJson || !parsed) return null;
-  const { providerName, providerBlock } = extractCurrent(parsed);
+  const { providerName, providerBlock, model } = extractCurrent(parsed);
   for (const p of state.profiles) {
     if (!deepEqual(p.authJson, authJson)) continue;
     const kind = profileKind(p);
     if (kind === 'official') {
-      if (!providerName) return p.name;
+      if (!providerName && !normalizeModel(model)) return p.name;
     } else {
       if (
         p.providerName === providerName &&
-        deepEqual(p.providerBlock, providerBlock)
+        deepEqual(p.providerBlock, providerBlock) &&
+        normalizeModel(p.model) === normalizeModel(model)
       ) return p.name;
     }
   }

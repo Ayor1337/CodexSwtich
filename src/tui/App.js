@@ -1,5 +1,4 @@
-import { Box, Text, useApp, useInput } from 'ink';
-import TOML from '@iarna/toml';
+import { Box, Text, useInput } from 'ink';
 import { html, React } from './html.js';
 import { ProfileList } from './ProfileList.js';
 import { Details } from './Details.js';
@@ -9,6 +8,7 @@ import { TextPrompt } from './TextPrompt.js';
 import { ConfirmPrompt } from './ConfirmPrompt.js';
 import { Message } from './Message.js';
 import { SelectPrompt } from './SelectPrompt.js';
+import { ProviderAuthForm } from './ProviderAuthForm.js';
 import {
   addProfile,
   updateProfile,
@@ -25,18 +25,23 @@ import { switchTo } from '../switcher.js';
 import { readAuth, readConfig } from '../codex.js';
 import { buildActionItems } from './actions.js';
 
-const TOML_TEMPLATE = `name = ""
-wire_api = "responses"
-requires_openai_auth = true
-base_url = ""
-`;
-const JSON_TEMPLATE = `{
-  "OPENAI_API_KEY": ""
-}
-`;
+const INLINE_PROMPT_MODES = new Set([
+  'add:kind',
+  'add:name',
+  'add:provider-auth',
+  'add:confirm-switch',
+  'rename',
+  'confirm-delete',
+  'import:name',
+  'edit:rename',
+  'edit:provider-auth',
+]);
 
-export function App({ ctrl, onEditor, onQuit }) {
-  const { exit } = useApp();
+export function isInlinePromptMode(mode) {
+  return INLINE_PROMPT_MODES.has(mode);
+}
+
+export function App({ ctrl, onQuit }) {
   const [, setTick] = React.useState(0);
   const force = () => setTick((t) => t + 1);
 
@@ -67,12 +72,13 @@ export function App({ ctrl, onEditor, onQuit }) {
           authJson: ctrl.pending.authJson,
         }
       : {
-          name: ctrl.pending.name,
-          kind: 'custom',
-          providerName: ctrl.pending.providerName,
-          providerBlock: ctrl.pending.providerBlock,
-          authJson: ctrl.pending.authJson,
-        };
+        name: ctrl.pending.name,
+        kind: 'custom',
+        providerName: ctrl.pending.providerName,
+        providerBlock: ctrl.pending.providerBlock,
+        model: ctrl.pending.model,
+        authJson: ctrl.pending.authJson,
+      };
     try {
       addProfile(ctrl.state, profile);
       await saveProfiles(ctrl.state);
@@ -110,52 +116,6 @@ export function App({ ctrl, onEditor, onQuit }) {
     }
   };
 
-  const editProviderBlock = () => {
-    if (!sel) return;
-    onEditor({
-      initialText: (() => { try { return TOML.stringify(sel.providerBlock); } catch { return TOML_TEMPLATE; } })(),
-      opts: { suffix: '.toml' },
-      handler: async (res) => {
-        if (res.cancelled) { goBrowse(); return; }
-        let parsed;
-        try {
-          parsed = TOML.parse(res.text);
-          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('TOML must be a table');
-        } catch (e) {
-          showMessage('error', `TOML parse failed: ${e.message}`); return;
-        }
-        try {
-          updateProfile(ctrl.state, sel.name, { providerBlock: parsed });
-          await saveProfiles(ctrl.state);
-        } catch (e) { showMessage('error', e.message); return; }
-        await refreshDetected();
-        showMessage('info', `Updated providerBlock for "${sel.name}".`);
-      },
-    });
-  };
-
-  const editAuthJson = () => {
-    if (!sel) return;
-    onEditor({
-      initialText: JSON.stringify(sel.authJson, null, 2) + '\n',
-      opts: { suffix: '.json' },
-      handler: async (res) => {
-        if (res.cancelled) { goBrowse(); return; }
-        let parsed;
-        try {
-          parsed = JSON.parse(res.text);
-          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Must be a JSON object');
-        } catch (e) { showMessage('error', `JSON parse failed: ${e.message}`); return; }
-        try {
-          updateProfile(ctrl.state, sel.name, { authJson: parsed });
-          await saveProfiles(ctrl.state);
-        } catch (e) { showMessage('error', e.message); return; }
-        await refreshDetected();
-        showMessage('info', `Updated authJson for "${sel.name}".`);
-      },
-    });
-  };
-
   const runAction = (id) => {
     if (id === 'switch') { switchSelected(); return; }
     if (id === 'add') { ctrl.mode = 'add:kind'; ctrl.pending = {}; force(); return; }
@@ -174,9 +134,7 @@ export function App({ ctrl, onEditor, onQuit }) {
     }
     if (id === 'back') { goBrowse(); return; }
     if (id === 'edit-name') { if (sel) { ctrl.mode = 'edit:rename'; force(); } return; }
-    if (id === 'edit-provider') { if (sel) { ctrl.mode = 'edit:provider'; force(); } return; }
-    if (id === 'edit-provider-block') { editProviderBlock(); return; }
-    if (id === 'edit-auth') { editAuthJson(); return; }
+    if (id === 'edit-provider-auth') { if (sel) { ctrl.mode = 'edit:provider-auth'; force(); } return; }
   };
 
   // ---- input handler ----
@@ -223,54 +181,16 @@ export function App({ ctrl, onEditor, onQuit }) {
     }
   });
 
-  // ---- render ----
-  const layout = html`
-    <${Box} flexDirection="column" minHeight=${process.stdout.rows || 24}>
-      <${Box} paddingX=${1}>
-        <${Text} bold color="magenta">codex-switch </${Text}>
-        <${Text}>— Active: </${Text}>
-        <${Text} color="green">${detected ?? '(none)'}</${Text}>
-        ${detected && ctrl.state.active && detected !== ctrl.state.active
-          ? html`<${Text} color="yellow"> [drifted from stored: ${ctrl.state.active}]</${Text}>`
-          : null}
-        ${!detected && ctrl.state.active
-          ? html`<${Text} color="yellow"> [stored: ${ctrl.state.active}, but ~/.codex doesn't match]</${Text}>`
-          : null}
-      </${Box}>
-      <${Box} flexGrow=${1}>
-        <${ProfileList}
-          profiles=${profiles}
-          activeName=${detected}
-          selectedIndex=${ctrl.selectedIndex}
-          focused=${ctrl.focus === 'profiles'}
-        />
-        ${ctrl.mode === 'message'
-          ? html`<${Message}
-              kind=${ctrl.message.kind}
-              text=${ctrl.message.text}
-              onDismiss=${() => { ctrl.mode = 'browse'; ctrl.message = null; force(); }}
-            />`
-          : html`<${Details} profile=${sel} />`}
-        <${ActionPanel}
-          actions=${actionItems}
-          selectedIndex=${ctrl.actionIndex}
-          focused=${ctrl.focus === 'actions'}
-          title=${ctrl.mode === 'edit-menu' ? 'Edit Profile' : 'Actions'}
-        />
-      </${Box}>
-      ${ctrl.mode === 'message'
-        ? html`<${Box} paddingX=${1}><${Text} dimColor>Enter: dismiss</${Text}></${Box}>`
-        : html`<${HelpBar} mode=${ctrl.mode === 'edit-menu' ? 'edit-menu' : 'browse'} />`}
-    </${Box}>
-  `;
-
-  // ---- modal overlays ----
-  if (ctrl.mode === 'message') {
-    return layout;
-  }
+  let mainSlot = ctrl.mode === 'message'
+    ? html`<${Message}
+        kind=${ctrl.message.kind}
+        text=${ctrl.message.text}
+        onDismiss=${() => { ctrl.mode = 'browse'; ctrl.message = null; force(); }}
+      />`
+    : html`<${Details} profile=${sel} />`;
 
   if (ctrl.mode === 'add:kind') {
-    return html`<${SelectPrompt}
+    mainSlot = html`<${SelectPrompt}
       label="New profile — kind"
       options=${[
         { key: 'o', label: 'Official OpenAI auth', value: 'official',
@@ -284,7 +204,7 @@ export function App({ ctrl, onEditor, onQuit }) {
   }
   if (ctrl.mode === 'add:name') {
     const isOfficial = ctrl.pending.kind === 'official';
-    return html`<${TextPrompt}
+    mainSlot = html`<${TextPrompt}
       label=${isOfficial ? 'New official profile — name' : 'New custom profile — name'}
       validate=${(v) => {
         if (!NAME_RE.test(v)) return 'allowed: A-Z a-z 0-9 _ . -';
@@ -312,54 +232,28 @@ export function App({ ctrl, onEditor, onQuit }) {
           ctrl.mode = 'add:confirm-switch';
           force();
         } else {
-          ctrl.mode = 'add:provider';
+          ctrl.mode = 'add:provider-auth';
           force();
         }
       }}
       onCancel=${goBrowse}
     />`;
   }
-  if (ctrl.mode === 'add:provider') {
-    return html`<${TextPrompt}
-      label="providerName (TOML model_provider value)"
-      defaultValue=${ctrl.pending.name}
-      validate=${(v) => NAME_RE.test(v) ? true : 'allowed: A-Z a-z 0-9 _ . -'}
-      onSubmit=${(v) => {
-        ctrl.pending.providerName = v;
-        // drop to editor for providerBlock TOML
-        onEditor({
-          initialText: TOML_TEMPLATE,
-          opts: { suffix: '.toml' },
-          handler: async (res) => {
-            if (res.cancelled) { goBrowse(); return; }
-            try {
-              const parsed = TOML.parse(res.text);
-              if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('TOML must be a table');
-              ctrl.pending.providerBlock = parsed;
-              // next: authJson editor
-              onEditor({
-                initialText: JSON_TEMPLATE,
-                opts: { suffix: '.json' },
-                handler: async (res2) => {
-                  if (res2.cancelled) { goBrowse(); return; }
-                  try {
-                    const auth = JSON.parse(res2.text);
-                    if (!auth || typeof auth !== 'object' || Array.isArray(auth)) throw new Error('Must be a JSON object');
-                    ctrl.pending.authJson = auth;
-                    ctrl.mode = 'add:confirm-switch';
-                    force();
-                  } catch (e) { showMessage('error', `JSON parse failed: ${e.message}`); }
-                },
-              });
-            } catch (e) { showMessage('error', `TOML parse failed: ${e.message}`); }
-          },
-        });
+  if (ctrl.mode === 'add:provider-auth') {
+    mainSlot = html`<${ProviderAuthForm}
+      label="New custom profile — provider/auth"
+      fallbackName=${ctrl.pending.name}
+      submitLabel="continue"
+      onSubmit=${(patch) => {
+        Object.assign(ctrl.pending, patch);
+        ctrl.mode = 'add:confirm-switch';
+        force();
       }}
       onCancel=${goBrowse}
     />`;
   }
   if (ctrl.mode === 'add:confirm-switch') {
-    return html`<${ConfirmPrompt}
+    mainSlot = html`<${ConfirmPrompt}
       label=${`Switch to "${ctrl.pending.name}" now?`}
       defaultYes=${false}
       onAnswer=${(yes) => finalizeAdd(yes)}
@@ -367,7 +261,7 @@ export function App({ ctrl, onEditor, onQuit }) {
   }
 
   if (ctrl.mode === 'rename') {
-    return html`<${TextPrompt}
+    mainSlot = html`<${TextPrompt}
       label=${`Rename "${ctrl.pending.name}" to`}
       defaultValue=${ctrl.pending.name}
       validate=${(v) => {
@@ -392,7 +286,7 @@ export function App({ ctrl, onEditor, onQuit }) {
   if (ctrl.mode === 'confirm-delete') {
     const name = ctrl.pending.name;
     const isActive = name === detected;
-    return html`<${ConfirmPrompt}
+    mainSlot = html`<${ConfirmPrompt}
       label=${`Delete "${name}"?${isActive ? ' (it is currently active; ~/.codex left as-is)' : ''}`}
       defaultYes=${false}
       onAnswer=${async (yes) => {
@@ -409,7 +303,7 @@ export function App({ ctrl, onEditor, onQuit }) {
   }
 
   if (ctrl.mode === 'import:name') {
-    return html`<${TextPrompt}
+    mainSlot = html`<${TextPrompt}
       label="Import current ~/.codex state — profile name"
       defaultValue=${ctrl.pending.defaultName}
       validate=${(v) => {
@@ -431,8 +325,8 @@ export function App({ ctrl, onEditor, onQuit }) {
     />`;
   }
 
-  if (ctrl.mode === 'edit:rename') {
-    return html`<${TextPrompt}
+  if (ctrl.mode === 'edit:rename' && sel) {
+    mainSlot = html`<${TextPrompt}
       label=${`Rename "${sel.name}" to`}
       defaultValue=${sel.name}
       validate=${(v) => {
@@ -451,20 +345,56 @@ export function App({ ctrl, onEditor, onQuit }) {
       onCancel=${() => { ctrl.mode = 'edit-menu'; force(); }}
     />`;
   }
-  if (ctrl.mode === 'edit:provider') {
-    return html`<${TextPrompt}
-      label=${`providerName for "${sel.name}"`}
-      defaultValue=${sel.providerName}
-      validate=${(v) => NAME_RE.test(v) ? true : 'allowed: A-Z a-z 0-9 _ . -'}
-      onSubmit=${async (v) => {
-        try { updateProfile(ctrl.state, sel.name, { providerName: v }); await saveProfiles(ctrl.state); }
+  if (ctrl.mode === 'edit:provider-auth' && sel) {
+    mainSlot = html`<${ProviderAuthForm}
+      label=${`Provider/auth settings for "${sel.name}"`}
+      profile=${sel}
+      onSubmit=${async (patch) => {
+        try { updateProfile(ctrl.state, sel.name, patch); await saveProfiles(ctrl.state); }
         catch (e) { showMessage('error', e.message); return; }
         await refreshDetected();
-        showMessage('info', `Updated providerName.`);
+        showMessage('info', `Updated provider/auth settings.`);
       }}
       onCancel=${() => { ctrl.mode = 'edit-menu'; force(); }}
     />`;
   }
 
-  return layout;
+  const footer = ctrl.mode === 'message'
+    ? html`<${Box} paddingX=${1}><${Text} dimColor>Enter: dismiss</${Text}></${Box}>`
+    : isInlinePromptMode(ctrl.mode)
+      ? null
+      : html`<${HelpBar} mode=${ctrl.mode === 'edit-menu' ? 'edit-menu' : 'browse'} />`;
+
+  // ---- render ----
+  return html`
+    <${Box} flexDirection="column" minHeight=${process.stdout.rows || 24}>
+      <${Box} paddingX=${1}>
+        <${Text} bold color="magenta">codex-switch </${Text}>
+        <${Text}>— Active: </${Text}>
+        <${Text} color="green">${detected ?? '(none)'}</${Text}>
+        ${detected && ctrl.state.active && detected !== ctrl.state.active
+          ? html`<${Text} color="yellow"> [drifted from stored: ${ctrl.state.active}]</${Text}>`
+          : null}
+        ${!detected && ctrl.state.active
+          ? html`<${Text} color="yellow"> [stored: ${ctrl.state.active}, but ~/.codex doesn't match]</${Text}>`
+          : null}
+      </${Box}>
+      <${Box} flexGrow=${1}>
+        <${ProfileList}
+          profiles=${profiles}
+          activeName=${detected}
+          selectedIndex=${ctrl.selectedIndex}
+          focused=${ctrl.focus === 'profiles'}
+        />
+        ${mainSlot}
+        <${ActionPanel}
+          actions=${actionItems}
+          selectedIndex=${ctrl.actionIndex}
+          focused=${ctrl.focus === 'actions'}
+          title=${ctrl.mode === 'edit-menu' ? 'Edit Profile' : 'Actions'}
+        />
+      </${Box}>
+      ${footer}
+    </${Box}>
+  `;
 }

@@ -83,6 +83,9 @@ export function Details({ profile }) {
     providerSection = html`
       <${Box} flexDirection="column">
         <${Text}>provider: <${Text} color="cyan">${profile.providerName}</${Text}></${Text}>
+        ${profile.model
+          ? html`<${Text}>model: <${Text} color="cyan">${profile.model}</${Text}></${Text}>`
+          : html`<${Text}>model: <${Text} dimColor>(none)</${Text}></${Text}>`}
         <${Box} marginTop=${1} flexDirection="column">
           <${Text} dimColor>[model_providers.${profile.providerName}]</${Text}>
           <${DetailTable} rows=${providerRows} />

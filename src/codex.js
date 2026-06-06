@@ -32,17 +32,26 @@ export function extractCurrent(parsed) {
   const providerBlock = providerName && parsed.model_providers
     ? parsed.model_providers[providerName] ?? null
     : null;
-  return { providerName, providerBlock };
+  const model = typeof parsed.model === 'string' && parsed.model.trim()
+    ? parsed.model.trim()
+    : null;
+  return { providerName, providerBlock, model };
 }
 
 export function applyProfileToConfig(parsed, profile) {
   const kind = profile.kind || (profile.providerName ? 'custom' : 'official');
   if (kind === 'official') {
-    // Drop any override; leave [model_providers.*] tables alone (inert when unreferenced).
+    // Drop active overrides; leave [model_providers.*] tables inert when unreferenced.
     delete parsed.model_provider;
+    delete parsed.model;
     return parsed;
   }
   parsed.model_provider = profile.providerName;
+  if (typeof profile.model === 'string' && profile.model.trim()) {
+    parsed.model = profile.model.trim();
+  } else {
+    delete parsed.model;
+  }
   if (!parsed.model_providers || typeof parsed.model_providers !== 'object') {
     parsed.model_providers = {};
   }

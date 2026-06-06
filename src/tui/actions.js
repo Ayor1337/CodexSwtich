@@ -18,15 +18,12 @@ const TOP_EMPTY = [
 
 const EDIT_OFFICIAL = [
   { id: 'edit-name', label: 'Name', description: 'Rename this profile.' },
-  { id: 'edit-auth', label: 'Auth JSON', description: 'Edit auth.json in $EDITOR.' },
   { id: 'back', label: 'Back', description: 'Return to top-level actions.' },
 ];
 
 const EDIT_CUSTOM = [
   { id: 'edit-name', label: 'Name', description: 'Rename this profile.' },
-  { id: 'edit-provider', label: 'Provider Name', description: 'Change model_provider.' },
-  { id: 'edit-provider-block', label: 'ProviderBlock TOML', description: 'Edit TOML in $EDITOR.' },
-  { id: 'edit-auth', label: 'Auth JSON', description: 'Edit auth.json in $EDITOR.' },
+  { id: 'edit-provider-auth', label: 'Provider/Auth Settings', description: 'Edit provider, model, and API key.' },
   { id: 'back', label: 'Back', description: 'Return to top-level actions.' },
 ];
 

@@ -1,7 +1,6 @@
 import { render } from 'ink';
 import { React } from './html.js';
 import { App } from './App.js';
-import { editExternal } from './editor.js';
 import { detectActiveProfile } from '../profiles.js';
 
 class Controller {
@@ -28,36 +27,10 @@ export async function renderTui(initialState) {
     delete initialState.__bootMessage;
   }
 
-  for (;;) {
-    let editorReq = null;
-    let quit = false;
+  const app = render(React.createElement(App, {
+    ctrl,
+    onQuit: () => { app.unmount(); },
+  }));
 
-    const app = render(React.createElement(App, {
-      ctrl,
-      onEditor: (req) => { editorReq = req; app.unmount(); },
-      onQuit: () => { quit = true; app.unmount(); },
-    }));
-
-    await app.waitUntilExit();
-
-    if (quit) break;
-    if (!editorReq) break;
-
-    // run external editor (Ink is unmounted, TTY restored)
-    let result;
-    try {
-      result = await editExternal(editorReq.initialText, editorReq.opts);
-    } catch (e) {
-      result = { cancelled: true, text: editorReq.initialText, error: e.message };
-    }
-
-    // handler advances ctrl state (may set message mode, pending, etc.)
-    try {
-      await editorReq.handler(result);
-    } catch (e) {
-      ctrl.mode = 'message';
-      ctrl.message = { kind: 'error', text: `Editor handler failed: ${e.message}` };
-    }
-    // loop re-mounts Ink
-  }
+  await app.waitUntilExit();
 }

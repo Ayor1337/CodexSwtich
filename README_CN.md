@@ -75,6 +75,9 @@ profile。新建 **official** profile 时，工具会直接读取当前的
 API key 会保存到 profile 的 `authJson.OPENAI_API_KEY`，切换到该 profile
 时写入 `~/.codex/auth.json`。custom profile 的 `model` 可以留空；切换到
 该 profile 时会删除 `~/.codex/config.toml` 中已有的顶层 `model`。
+对于 official profile，codex-switch 会在切换离开前从当前 live 的官方
+`~/.codex/auth.json` 刷新已保存 auth；TUI 编辑菜单里也提供
+**Refresh Auth**，用于手动捕获新的 `codex login` 会话。
 
 ## 数据存放位置
 

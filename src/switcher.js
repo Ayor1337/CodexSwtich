@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { AUTH, CONFIG, BACKUPS } from './paths.js';
 import { readConfig, applyProfileToConfig, writeAuth, writeConfig } from './codex.js';
-import { findProfile, validateName, profileKind } from './profiles.js';
+import { findProfile, validateName, profileKind, refreshActiveOfficialAuthFromCurrent } from './profiles.js';
 import { saveProfiles } from './store.js';
 import { deepEqual } from './util/deepEqual.js';
 
@@ -41,6 +41,8 @@ export async function switchTo(state, name, { onCollision } = {}) {
       throw new Error(`Profile "${name}" has invalid providerBlock`);
     }
   }
+
+  await refreshActiveOfficialAuthFromCurrent(state);
 
   const didBackup = await backupOnceIfNeeded();
 

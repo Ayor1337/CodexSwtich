@@ -28,7 +28,7 @@ test('shows official edit submenu actions', () => {
   const profile = { name: 'openai', kind: 'official', authJson: {} };
   const actions = buildActionItems({ profile, mode: 'edit-menu' });
 
-  assert.deepEqual(actions.map((a) => a.id), ['edit-name', 'back']);
+  assert.deepEqual(actions.map((a) => a.id), ['edit-name', 'refresh-official-auth', 'back']);
 });
 
 test('shows custom edit submenu actions', () => {

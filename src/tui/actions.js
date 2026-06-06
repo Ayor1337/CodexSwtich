@@ -18,6 +18,7 @@ const TOP_EMPTY = [
 
 const EDIT_OFFICIAL = [
   { id: 'edit-name', label: 'Name', description: 'Rename this profile.' },
+  { id: 'refresh-official-auth', label: 'Refresh Auth', description: 'Capture current ~/.codex official auth.' },
   { id: 'back', label: 'Back', description: 'Return to top-level actions.' },
 ];
 

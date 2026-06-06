@@ -18,6 +18,8 @@ import {
   buildProfileFromCurrent,
   detectActiveProfile,
   validateOfficialAuth,
+  refreshActiveOfficialAuthFromCurrent,
+  refreshOfficialProfileFromCurrent,
   NAME_RE,
 } from '../profiles.js';
 import { saveProfiles } from '../store.js';
@@ -57,6 +59,8 @@ export function App({ ctrl, onQuit }) {
   };
 
   const refreshDetected = async () => {
+    const refreshed = await refreshActiveOfficialAuthFromCurrent(ctrl.state);
+    if (refreshed) await saveProfiles(ctrl.state);
     ctrl.detectedActive = await detectActiveProfile(ctrl.state);
     force();
   };
@@ -134,6 +138,20 @@ export function App({ ctrl, onQuit }) {
     }
     if (id === 'back') { goBrowse(); return; }
     if (id === 'edit-name') { if (sel) { ctrl.mode = 'edit:rename'; force(); } return; }
+    if (id === 'refresh-official-auth') {
+      if (!sel) return;
+      (async () => {
+        try {
+          const refreshed = await refreshOfficialProfileFromCurrent(ctrl.state, sel.name);
+          await saveProfiles(ctrl.state);
+          await refreshDetected();
+          showMessage('info', refreshed ? 'Refreshed official auth from ~/.codex/auth.json.' : 'Official auth is already current.');
+        } catch (e) {
+          showMessage('error', e.message);
+        }
+      })();
+      return;
+    }
     if (id === 'edit-provider-auth') { if (sel) { ctrl.mode = 'edit:provider-auth'; force(); } return; }
   };
 

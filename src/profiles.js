@@ -92,6 +92,38 @@ export function updateProfile(state, name, patch) {
   return state;
 }
 
+export function refreshOfficialAuthFromLive(state, name, authJson, configParsed) {
+  const p = findProfile(state, name);
+  if (!p) throw new Error(`Profile "${name}" not found`);
+  if (profileKind(p) !== 'official') {
+    throw new Error(`Profile "${name}" is not an official profile`);
+  }
+  validateOfficialAuth(authJson, configParsed);
+  if (deepEqual(p.authJson, authJson)) return false;
+  p.authJson = authJson;
+  p.updatedAt = new Date().toISOString();
+  return true;
+}
+
+export async function refreshOfficialProfileFromCurrent(state, name) {
+  const authJson = await readAuth();
+  const { parsed } = await readConfig();
+  if (!authJson) {
+    throw new Error('Current ~/.codex/auth.json is missing');
+  }
+  return refreshOfficialAuthFromLive(state, name, authJson, parsed);
+}
+
+export async function refreshActiveOfficialAuthFromCurrent(state) {
+  const active = state.active ? findProfile(state, state.active) : null;
+  if (!active || profileKind(active) !== 'official') return false;
+  try {
+    return await refreshOfficialProfileFromCurrent(state, active.name);
+  } catch {
+    return false;
+  }
+}
+
 export function renameProfile(state, oldName, newName) {
   validateName(newName);
   if (findProfile(state, newName)) {

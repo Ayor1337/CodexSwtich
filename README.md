@@ -78,6 +78,9 @@ entry. The API key is stored as `authJson.OPENAI_API_KEY` in the profile and is
 written to `~/.codex/auth.json` when that profile is switched to. The custom
 profile's `model` field may be left blank; switching to that profile then
 removes any existing top-level `model` from `~/.codex/config.toml`.
+For official profiles, codex-switch refreshes the stored auth from the live
+official `~/.codex/auth.json` before switching away, and the TUI edit menu also
+has **Refresh Auth** for capturing a fresh `codex login` session manually.
 
 ## Storage
 

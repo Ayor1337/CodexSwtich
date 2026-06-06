@@ -1,5 +1,4 @@
 import { Box, Text } from 'ink';
-import TOML from '@iarna/toml';
 import { html } from './html.js';
 import { profileKind } from '../profiles.js';
 
@@ -9,12 +8,54 @@ function maskValue(v) {
   return `${v.slice(0, 3)}…${v.slice(-4)}`;
 }
 
-function maskedAuth(authJson) {
-  const out = {};
-  for (const [k, v] of Object.entries(authJson || {})) {
-    out[k] = /key|token|secret/i.test(k) ? maskValue(v) : v;
+function isRecord(v) {
+  return v && typeof v === 'object' && !Array.isArray(v);
+}
+
+function formatValue(v) {
+  if (v === null) return 'null';
+  if (v === undefined) return 'undefined';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
+  try { return JSON.stringify(v); }
+  catch { return String(v); }
+}
+
+function flattenEntries(value, prefix = '') {
+  if (Array.isArray(value)) {
+    return value.flatMap((item, i) => flattenEntries(item, prefix ? `${prefix}.${i}` : String(i)));
   }
-  return out;
+  if (isRecord(value)) {
+    return Object.entries(value).flatMap(([key, item]) => (
+      flattenEntries(item, prefix ? `${prefix}.${key}` : key)
+    ));
+  }
+  return prefix ? [{ key: prefix, value }] : [];
+}
+
+export function detailRows(value, { maskSensitive = false } = {}) {
+  return flattenEntries(value).map(({ key, value: raw }) => ({
+    key,
+    value: maskSensitive && /key|token|secret/i.test(key) ? maskValue(raw) : formatValue(raw),
+  }));
+}
+
+export function DetailTable({ rows }) {
+  if (!rows.length) {
+    return html`<${Text} dimColor>  none</${Text}>`;
+  }
+  const keyWidth = Math.min(28, Math.max(...rows.map((row) => row.key.length)));
+  return html`
+    <${Box} flexDirection="column">
+      ${rows.map((row) => html`
+        <${Box} key=${row.key}>
+          <${Text} color="cyan">${row.key.padEnd(keyWidth)}</${Text}>
+          <${Text} dimColor>  │  </${Text}>
+          <${Text}>${row.value}</${Text}>
+        </${Box}>
+      `)}
+    </${Box}>
+  `;
 }
 
 export function Details({ profile }) {
@@ -27,7 +68,7 @@ export function Details({ profile }) {
   }
 
   const kind = profileKind(profile);
-  const authText = JSON.stringify(maskedAuth(profile.authJson), null, 2);
+  const authRows = detailRows(profile.authJson || {}, { maskSensitive: true });
 
   let providerSection;
   if (kind === 'official') {
@@ -38,15 +79,16 @@ export function Details({ profile }) {
       </${Box}>
     `;
   } else {
-    let tomlText = '';
-    try { tomlText = TOML.stringify(profile.providerBlock || {}).trimEnd(); }
-    catch (e) { tomlText = `(error stringifying providerBlock: ${e.message})`; }
+    const providerRows = detailRows(profile.providerBlock || {});
     providerSection = html`
       <${Box} flexDirection="column">
         <${Text}>provider: <${Text} color="cyan">${profile.providerName}</${Text}></${Text}>
+        ${profile.model
+          ? html`<${Text}>model: <${Text} color="cyan">${profile.model}</${Text}></${Text}>`
+          : html`<${Text}>model: <${Text} dimColor>(none)</${Text}></${Text}>`}
         <${Box} marginTop=${1} flexDirection="column">
           <${Text} dimColor>[model_providers.${profile.providerName}]</${Text}>
-          ${tomlText.split('\n').map((line, i) => html`<${Text} key=${i}>  ${line}</${Text}>`)}
+          <${DetailTable} rows=${providerRows} />
         </${Box}>
       </${Box}>
     `;
@@ -61,7 +103,7 @@ export function Details({ profile }) {
       ${providerSection}
       <${Box} marginTop=${1} flexDirection="column">
         <${Text} dimColor>auth.json (masked)</${Text}>
-        ${authText.split('\n').map((line, i) => html`<${Text} key=${i}>  ${line}</${Text}>`)}
+        <${DetailTable} rows=${authRows} />
       </${Box}>
     </${Box}>
   `;

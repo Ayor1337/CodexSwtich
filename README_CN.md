@@ -13,8 +13,9 @@
   `[model_providers.<name>]` 表（例如 `tokenflux`、代理、本地
   Ollama 等）。
 
-切换是原子的。`config.toml` 中除上述两处之外的其它内容（model、
-personality、features、projects、mcp_servers、tui 等）都保持不变。
+切换是原子的。`config.toml` 中除上述 provider 字段以及 custom profile
+可选保存的 model 之外，其它内容（personality、features、projects、
+mcp_servers、tui 等）都保持不变。
 
 ## 安装
 
@@ -51,8 +52,7 @@ TUI 中的快捷键：
 - `q` —— 顶层时退出
 
 新建、编辑、重命名、删除、导入和退出等主要操作都从动作面板中选择。
-编辑 custom profile 时，TOML providerBlock 和 JSON authJson 仍会交给
-`$EDITOR` 打开。
+编辑 custom profile 时，provider、model 和 API key 都在 TUI 表格中填写。
 
 如果想用在脚本里，可以用子命令：
 
@@ -71,8 +71,10 @@ codex-switch --version
 首次运行时会自动把当前的 `~/.codex` 状态导入为名为 `current` 的
 profile。新建 **official** profile 时，工具会直接读取当前的
 `~/.codex/auth.json`（请先 `codex login`），不需要手动编辑；新建
-**custom** profile 时会用 `$EDITOR` 打开 TOML（providerBlock）和
-JSON（authJson）模板供你填写。
+**custom** profile 时会在 TUI 表格中填写 provider 配置和 API key。
+API key 会保存到 profile 的 `authJson.OPENAI_API_KEY`，切换到该 profile
+时写入 `~/.codex/auth.json`。custom profile 的 `model` 可以留空；切换到
+该 profile 时会删除 `~/.codex/config.toml` 中已有的顶层 `model`。
 
 ## 数据存放位置
 

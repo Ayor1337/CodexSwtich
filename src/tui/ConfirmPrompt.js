@@ -12,7 +12,7 @@ export function ConfirmPrompt({ label, defaultYes = false, onAnswer }) {
 
   const hint = defaultYes ? '[Y/n]' : '[y/N]';
   return html`
-    <${Box} flexDirection="column" borderStyle="round" borderColor="yellow" paddingX=${1}>
+    <${Box} flexDirection="column" borderStyle="round" borderColor="yellow" paddingX=${1} flexGrow=${1}>
       <${Text} color="yellow" bold>${label}</${Text}>
       <${Box} marginTop=${1}><${Text} dimColor>${hint}    y: yes    n: no    Esc: cancel</${Text}></${Box}>
     </${Box}>

@@ -118,6 +118,7 @@ async function cmdShow(state, name) {
   console.log(`kind: ${kind}`);
   if (kind === 'custom') {
     console.log(`providerName: ${p.providerName}`);
+    console.log(`model: ${p.model || '(none)'}`);
     console.log('providerBlock:');
     console.log(TOML.stringify(p.providerBlock).replace(/^/gm, '  '));
   } else {

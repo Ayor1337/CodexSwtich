@@ -14,8 +14,9 @@ Each profile has a **kind**:
   `[model_providers.<name>]` table (e.g. `tokenflux`, a proxy, a local
   Ollama endpoint, …).
 
-Switches are atomic. Everything else in `config.toml` (model,
-personality, features, projects, mcp_servers, tui, …) is left untouched.
+Switches are atomic. Everything else in `config.toml` except the provider
+fields and the optional model saved by a custom profile (personality,
+features, projects, mcp_servers, tui, …) is left untouched.
 
 ## Install
 
@@ -52,8 +53,8 @@ Keys inside the TUI:
 - `q` — quit from the top level
 
 Main operations such as add, edit, rename, delete, import, and quit are
-selected from the action panel. Editing a custom profile still opens
-`$EDITOR` for the TOML provider block and JSON auth file.
+selected from the action panel. Editing a custom profile uses an in-TUI table
+for provider, model, and API key settings.
 
 For scripting there are subcommands:
 
@@ -72,8 +73,11 @@ codex-switch --version
 First run auto-imports your current `~/.codex` state as a profile named
 `current`. Adding an **official** profile captures the live
 `~/.codex/auth.json` directly (run `codex login` first); adding a
-**custom** profile drops you into `$EDITOR` for the TOML provider block
-and JSON auth file.
+**custom** profile uses a TUI table for provider configuration and API key
+entry. The API key is stored as `authJson.OPENAI_API_KEY` in the profile and is
+written to `~/.codex/auth.json` when that profile is switched to. The custom
+profile's `model` field may be left blank; switching to that profile then
+removes any existing top-level `model` from `~/.codex/config.toml`.
 
 ## Storage
 

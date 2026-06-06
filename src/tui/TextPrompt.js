@@ -20,7 +20,7 @@ export function TextPrompt({ label, defaultValue = '', validate, onSubmit, onCan
   };
 
   return html`
-    <${Box} flexDirection="column" borderStyle="round" borderColor="cyan" paddingX=${1}>
+    <${Box} flexDirection="column" borderStyle="round" borderColor="cyan" paddingX=${1} flexGrow=${1}>
       <${Text} color="cyan" bold>${label}</${Text}>
       <${Box} marginTop=${1}>
         <${Text}>› </${Text}>

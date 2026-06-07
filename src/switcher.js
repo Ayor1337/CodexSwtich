@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { AUTH, CONFIG, BACKUPS } from './paths.js';
 import { readConfig, applyProfileToConfig, writeAuth, writeConfig } from './codex.js';
-import { findProfile, validateName, profileKind, refreshActiveOfficialAuthFromCurrent } from './profiles.js';
+import { findProfile, validateName, profileKind, assertCurrentOfficialAuthIsSaved } from './profiles.js';
 import { saveProfiles } from './store.js';
 import { deepEqual } from './util/deepEqual.js';
 
@@ -42,7 +42,7 @@ export async function switchTo(state, name, { onCollision } = {}) {
     }
   }
 
-  await refreshActiveOfficialAuthFromCurrent(state);
+  await assertCurrentOfficialAuthIsSaved(state);
 
   const didBackup = await backupOnceIfNeeded();
 

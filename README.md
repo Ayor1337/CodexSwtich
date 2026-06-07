@@ -60,7 +60,7 @@ For scripting there are subcommands:
 
 ```bash
 codex-switch list                     # list profiles, * marks active
-codex-switch current                  # print the detected active profile
+codex-switch current                  # print active profile and sync status
 codex-switch use <name>               # switch to a profile
 codex-switch show <name>              # print profile details (keys masked)
 codex-switch import [name]            # capture current ~/.codex state
@@ -78,9 +78,17 @@ entry. The API key is stored as `authJson.OPENAI_API_KEY` in the profile and is
 written to `~/.codex/auth.json` when that profile is switched to. The custom
 profile's `model` field may be left blank; switching to that profile then
 removes any existing top-level `model` from `~/.codex/config.toml`.
-For official profiles, codex-switch refreshes the stored auth from the live
-official `~/.codex/auth.json` before switching away, and the TUI edit menu also
-has **Refresh Auth** for capturing a fresh `codex login` session manually.
+If the live official `~/.codex/auth.json` is not saved to any official profile,
+codex-switch blocks switching so a fresh `codex login` session is not overwritten
+by an older profile. Use **Import Current** to save it as a new profile, or use
+**Refresh Auth** in the TUI edit menu to intentionally replace an existing
+official profile's saved auth.
+The TUI and CLI distinguish **sync** from **not sync**: `profiles.json.active`
+remains the stored active profile, while `not sync` means the live `~/.codex`
+files differ and need an explicit import or refresh.
+When the TUI opens on a not-sync official profile, it prompts immediately to
+either sync the current profile from `~/.codex/auth.json` or save the live state
+as a new profile.
 
 ## Storage
 

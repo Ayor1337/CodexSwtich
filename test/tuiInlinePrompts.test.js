@@ -13,6 +13,8 @@ test('all action prompt modes render inside the TUI layout slot', () => {
     'import:name',
     'edit:rename',
     'edit:provider-auth',
+    'resolve-sync',
+    'resolve-import:name',
   ];
 
   assert.deepEqual(inlineModes.filter(isInlinePromptMode), inlineModes);

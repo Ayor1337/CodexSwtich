@@ -9,7 +9,7 @@ import {
   renameProfile,
   findProfile,
   buildProfileFromCurrent,
-  detectActiveProfile,
+  detectProfileSyncStatus,
   profileKind,
 } from './profiles.js';
 import { switchTo } from './switcher.js';
@@ -19,7 +19,7 @@ const HELP = `codex-switch — switch Codex CLI auth + provider profiles
 Usage:
   codex-switch                          interactive TUI
   codex-switch list                     list profiles
-  codex-switch current                  show currently active profile (detected)
+  codex-switch current                  show active profile and sync status
   codex-switch use <name>               switch to profile <name>
   codex-switch show <name>              print profile <name> details (key masked)
   codex-switch import [name]            import current ~/.codex state as a profile
@@ -76,25 +76,33 @@ async function cmdList(state) {
     console.log('(no profiles)');
     return;
   }
-  const detected = await detectActiveProfile(state);
+  const status = await detectProfileSyncStatus(state);
   for (const p of state.profiles) {
-    const mark = p.name === detected ? '*' : ' ';
+    const mark = p.name === status.activeName ? '*' : ' ';
     const tail = profileKind(p) === 'official'
       ? '(official)'
       : `(provider=${p.providerName})`;
-    console.log(`${mark} ${p.name}  ${tail}`);
+    const sync = p.name === status.activeName && status.syncStatus === 'not sync'
+      ? ' (not sync)'
+      : '';
+    console.log(`${mark} ${p.name}  ${tail}${sync}`);
   }
 }
 
 async function cmdCurrent(state) {
-  const detected = await detectActiveProfile(state);
-  if (!detected) {
+  const status = await detectProfileSyncStatus(state);
+  if (status.syncStatus === 'not sync' && status.activeName) {
+    console.log(`${status.activeName} (not sync)`);
+    process.exitCode = 1;
+    return;
+  }
+  if (!status.activeName) {
     console.log('(no matching profile — ~/.codex may have been hand-edited)');
     if (state.active) console.log(`stored active: ${state.active}`);
     process.exitCode = 1;
     return;
   }
-  console.log(detected);
+  console.log(status.activeName);
 }
 
 async function cmdUse(state, name) {

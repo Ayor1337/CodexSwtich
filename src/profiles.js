@@ -5,6 +5,10 @@ export class OfficialAuthError extends Error {
   constructor(message) { super(message); this.name = 'OfficialAuthError'; }
 }
 
+export class UnsavedOfficialAuthError extends Error {
+  constructor(message) { super(message); this.name = 'UnsavedOfficialAuthError'; }
+}
+
 export const NAME_RE = /^[A-Za-z0-9_.-]+$/;
 
 export function validateName(name) {
@@ -114,13 +118,37 @@ export async function refreshOfficialProfileFromCurrent(state, name) {
   return refreshOfficialAuthFromLive(state, name, authJson, parsed);
 }
 
-export async function refreshActiveOfficialAuthFromCurrent(state) {
-  const active = state.active ? findProfile(state, state.active) : null;
-  if (!active || profileKind(active) !== 'official') return false;
+export function findMatchingOfficialProfile(state, authJson, configParsed) {
+  validateOfficialAuth(authJson, configParsed);
+  return state.profiles.find((p) => (
+    profileKind(p) === 'official' && deepEqual(p.authJson, authJson)
+  )) || null;
+}
+
+export function assertOfficialAuthSavedFromLive(state, authJson, configParsed) {
+  const matched = findMatchingOfficialProfile(state, authJson, configParsed);
+  if (matched) return matched.name;
+  throw new UnsavedOfficialAuthError(
+    'Current ~/.codex official auth is not saved to any profile. ' +
+    'Use Import Current to save it as a new profile, or Edit > Refresh Auth ' +
+    'on the intended official profile before switching.'
+  );
+}
+
+export async function assertCurrentOfficialAuthIsSaved(state) {
+  let authJson, parsed;
   try {
-    return await refreshOfficialProfileFromCurrent(state, active.name);
+    authJson = await readAuth();
+    ({ parsed } = await readConfig());
   } catch {
-    return false;
+    return null;
+  }
+  if (!authJson) return null;
+  try {
+    return assertOfficialAuthSavedFromLive(state, authJson, parsed);
+  } catch (e) {
+    if (e instanceof OfficialAuthError) return null;
+    throw e;
   }
 }
 
@@ -147,6 +175,19 @@ export function deleteProfile(state, name) {
 
 function normalizeModel(model) {
   return typeof model === 'string' && model.trim() ? model.trim() : null;
+}
+
+function profileMatchesLive(profile, authJson, current) {
+  if (!deepEqual(profile.authJson, authJson)) return false;
+  const kind = profileKind(profile);
+  if (kind === 'official') {
+    return !current.providerName && !normalizeModel(current.model);
+  }
+  return (
+    profile.providerName === current.providerName &&
+    deepEqual(profile.providerBlock, current.providerBlock) &&
+    normalizeModel(profile.model) === normalizeModel(current.model)
+  );
 }
 
 export async function buildProfileFromCurrent(name) {
@@ -185,19 +226,67 @@ export async function detectActiveProfile(state) {
     return null;
   }
   if (!authJson || !parsed) return null;
-  const { providerName, providerBlock, model } = extractCurrent(parsed);
+  const current = extractCurrent(parsed);
   for (const p of state.profiles) {
-    if (!deepEqual(p.authJson, authJson)) continue;
-    const kind = profileKind(p);
-    if (kind === 'official') {
-      if (!providerName && !normalizeModel(model)) return p.name;
-    } else {
-      if (
-        p.providerName === providerName &&
-        deepEqual(p.providerBlock, providerBlock) &&
-        normalizeModel(p.model) === normalizeModel(model)
-      ) return p.name;
-    }
+    if (profileMatchesLive(p, authJson, current)) return p.name;
   }
   return null;
+}
+
+export function profileSyncStatusFromLive(state, authJson, configParsed) {
+  if (!authJson || !configParsed) {
+    return {
+      activeName: null,
+      syncStatus: 'none',
+      detectedName: null,
+      storedActive: state.active || null,
+      reason: 'missing-live-state',
+    };
+  }
+
+  const current = extractCurrent(configParsed);
+  const detected = state.profiles.find((p) => profileMatchesLive(p, authJson, current)) || null;
+  const detectedName = detected ? detected.name : null;
+  const storedActive = state.active || null;
+  const storedProfile = storedActive ? findProfile(state, storedActive) : null;
+
+  if (storedProfile) {
+    const inSync = detectedName === storedActive;
+    return {
+      activeName: storedActive,
+      syncStatus: inSync ? 'sync' : 'not sync',
+      detectedName,
+      storedActive,
+      reason: inSync ? 'stored-active-matches-live' : 'stored-active-differs-from-live',
+    };
+  }
+
+  if (detectedName) {
+    return {
+      activeName: detectedName,
+      syncStatus: 'sync',
+      detectedName,
+      storedActive,
+      reason: storedActive ? 'stored-active-missing' : 'live-matches-profile',
+    };
+  }
+
+  return {
+    activeName: null,
+    syncStatus: storedActive ? 'not sync' : 'none',
+    detectedName: null,
+    storedActive,
+    reason: storedActive ? 'stored-active-missing' : 'no-matching-profile',
+  };
+}
+
+export async function detectProfileSyncStatus(state) {
+  let authJson, parsed;
+  try {
+    authJson = await readAuth();
+    ({ parsed } = await readConfig());
+  } catch {
+    return profileSyncStatusFromLive(state, null, null);
+  }
+  return profileSyncStatusFromLive(state, authJson, parsed);
 }

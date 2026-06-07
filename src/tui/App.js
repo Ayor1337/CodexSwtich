@@ -16,9 +16,8 @@ import {
   deleteProfile,
   findProfile,
   buildProfileFromCurrent,
-  detectActiveProfile,
+  detectProfileSyncStatus,
   validateOfficialAuth,
-  refreshActiveOfficialAuthFromCurrent,
   refreshOfficialProfileFromCurrent,
   NAME_RE,
 } from '../profiles.js';
@@ -37,6 +36,8 @@ const INLINE_PROMPT_MODES = new Set([
   'import:name',
   'edit:rename',
   'edit:provider-auth',
+  'resolve-sync',
+  'resolve-import:name',
 ]);
 
 export function isInlinePromptMode(mode) {
@@ -49,7 +50,14 @@ export function App({ ctrl, onQuit }) {
 
   const profiles = ctrl.state.profiles;
   const sel = profiles[ctrl.selectedIndex] || null;
-  const detected = ctrl.detectedActive;
+  const profileStatus = ctrl.profileStatus || {
+    activeName: null,
+    syncStatus: 'none',
+    detectedName: null,
+    storedActive: ctrl.state.active || null,
+    reason: 'not-detected',
+  };
+  const activeName = profileStatus.activeName;
 
   // ---- helpers ----
   const showMessage = (kind, text) => {
@@ -59,15 +67,13 @@ export function App({ ctrl, onQuit }) {
   };
 
   const refreshDetected = async () => {
-    const refreshed = await refreshActiveOfficialAuthFromCurrent(ctrl.state);
-    if (refreshed) await saveProfiles(ctrl.state);
-    ctrl.detectedActive = await detectActiveProfile(ctrl.state);
+    ctrl.profileStatus = await detectProfileSyncStatus(ctrl.state);
     force();
   };
 
   const goBrowse = () => { ctrl.mode = 'browse'; ctrl.pending = {}; force(); };
 
-  // After-save hook: refresh detected, message, return to browse
+  // After-save hook: refresh runtime status, message, return to browse
   const finalizeAdd = async (switchNow) => {
     const profile = ctrl.pending.kind === 'official'
       ? {
@@ -278,6 +284,57 @@ export function App({ ctrl, onQuit }) {
     />`;
   }
 
+  if (ctrl.mode === 'resolve-sync') {
+    mainSlot = html`<${SelectPrompt}
+      label=${`"${activeName}" is not sync with ~/.codex`}
+      options=${[
+        { key: 's', label: 'Sync current profile', value: 'sync',
+          description: `Replace "${activeName}" auth with the current official ~/.codex/auth.json.` },
+        { key: 'n', label: 'New profile', value: 'new',
+          description: 'Save the current ~/.codex state as a separate profile.' },
+      ]}
+      onSelect=${async (v) => {
+        if (v === 'new') {
+          ctrl.mode = 'resolve-import:name';
+          force();
+          return;
+        }
+        try {
+          const refreshed = await refreshOfficialProfileFromCurrent(ctrl.state, activeName);
+          await saveProfiles(ctrl.state);
+          await refreshDetected();
+          showMessage('info', refreshed ? `Synced "${activeName}" from ~/.codex/auth.json.` : `"${activeName}" is already sync.`);
+        } catch (e) {
+          showMessage('error', e.message);
+        }
+      }}
+      onCancel=${goBrowse}
+    />`;
+  }
+
+  if (ctrl.mode === 'resolve-import:name') {
+    mainSlot = html`<${TextPrompt}
+      label="Save current ~/.codex state as"
+      defaultValue=${ctrl.pending.defaultName}
+      validate=${(v) => {
+        if (!NAME_RE.test(v)) return 'allowed: A-Z a-z 0-9 _ . -';
+        if (findProfile(ctrl.state, v)) return `"${v}" already exists`;
+        return true;
+      }}
+      onSubmit=${async (v) => {
+        let p;
+        try { p = await buildProfileFromCurrent(v); }
+        catch (e) { showMessage('error', e.message); return; }
+        try { addProfile(ctrl.state, p); await saveProfiles(ctrl.state); }
+        catch (e) { showMessage('error', e.message); return; }
+        ctrl.selectedIndex = ctrl.state.profiles.findIndex((pp) => pp.name === v);
+        await refreshDetected();
+        showMessage('info', `Imported current ~/.codex state as "${v}".`);
+      }}
+      onCancel=${() => { ctrl.mode = 'resolve-sync'; force(); }}
+    />`;
+  }
+
   if (ctrl.mode === 'rename') {
     mainSlot = html`<${TextPrompt}
       label=${`Rename "${ctrl.pending.name}" to`}
@@ -303,7 +360,7 @@ export function App({ ctrl, onQuit }) {
 
   if (ctrl.mode === 'confirm-delete') {
     const name = ctrl.pending.name;
-    const isActive = name === detected;
+    const isActive = name === activeName;
     mainSlot = html`<${ConfirmPrompt}
       label=${`Delete "${name}"?${isActive ? ' (it is currently active; ~/.codex left as-is)' : ''}`}
       defaultYes=${false}
@@ -389,18 +446,18 @@ export function App({ ctrl, onQuit }) {
       <${Box} paddingX=${1}>
         <${Text} bold color="magenta">codex-switch </${Text}>
         <${Text}>— Active: </${Text}>
-        <${Text} color="green">${detected ?? '(none)'}</${Text}>
-        ${detected && ctrl.state.active && detected !== ctrl.state.active
-          ? html`<${Text} color="yellow"> [drifted from stored: ${ctrl.state.active}]</${Text}>`
+        <${Text} color=${profileStatus.syncStatus === 'not sync' ? 'yellow' : 'green'}>${activeName ?? '(none)'}</${Text}>
+        ${profileStatus.syncStatus === 'sync' && activeName
+          ? html`<${Text} color="green"> [sync]</${Text}>`
           : null}
-        ${!detected && ctrl.state.active
-          ? html`<${Text} color="yellow"> [stored: ${ctrl.state.active}, but ~/.codex doesn't match]</${Text}>`
+        ${profileStatus.syncStatus === 'not sync'
+          ? html`<${Text} color="yellow"> [not sync: ~/.codex differs]</${Text}>`
           : null}
       </${Box}>
       <${Box} flexGrow=${1}>
         <${ProfileList}
           profiles=${profiles}
-          activeName=${detected}
+          activeName=${activeName}
           selectedIndex=${ctrl.selectedIndex}
           focused=${ctrl.focus === 'profiles'}
         />

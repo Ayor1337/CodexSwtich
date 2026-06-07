@@ -58,7 +58,7 @@ TUI 中的快捷键：
 
 ```bash
 codex-switch list                     # 列出所有 profile，* 标记当前激活
-codex-switch current                  # 打印当前检测到的激活 profile 名
+codex-switch current                  # 打印当前 active profile 与同步状态
 codex-switch use <name>               # 切换到指定 profile
 codex-switch show <name>              # 打印 profile 详情（密钥已掩码）
 codex-switch import [name]            # 把当前 ~/.codex 状态导入为 profile
@@ -75,9 +75,16 @@ profile。新建 **official** profile 时，工具会直接读取当前的
 API key 会保存到 profile 的 `authJson.OPENAI_API_KEY`，切换到该 profile
 时写入 `~/.codex/auth.json`。custom profile 的 `model` 可以留空；切换到
 该 profile 时会删除 `~/.codex/config.toml` 中已有的顶层 `model`。
-对于 official profile，codex-switch 会在切换离开前从当前 live 的官方
-`~/.codex/auth.json` 刷新已保存 auth；TUI 编辑菜单里也提供
-**Refresh Auth**，用于手动捕获新的 `codex login` 会话。
+如果当前 live 的官方 `~/.codex/auth.json` 尚未保存到任何 official
+profile，codex-switch 会阻止切换，避免新的 `codex login` 会话被旧
+profile 覆盖。可以用 **Import Current** 保存为新 profile，或在 TUI
+编辑菜单里用 **Refresh Auth** 明确替换某个 existing official profile
+保存的 auth。
+TUI 和 CLI 会区分 **sync** 与 **not sync**：`profiles.json.active` 仍是
+上次保存的 active profile；`not sync` 表示 live 的 `~/.codex` 文件已经
+不同，需要用户显式 import 或 refresh。
+当 TUI 打开时发现 official profile 处于 not sync，会立即弹出选择：
+同步当前 profile 的 auth，或把 live 状态保存为新 profile。
 
 ## 数据存放位置
 
